@@ -27,7 +27,7 @@
   "composeExtensions": [],
   "configurableTabs": [
     {
-      "configurationUrl": "https://jpdeveoc01.azurewebsites.net/index.html#/config",
+      "configurationUrl": "https://<<appDomain>>/index.html#/config",
       "canUpdateConfiguration": true,
       "scopes": [
         "team",
@@ -39,8 +39,8 @@
     {
       "entityId": "index",
       "name": "Teams EOC",
-      "contentUrl": "https://jpdeveoc01.azurewebsites.net/index.html#/tab",
-      "websiteUrl": "https://plqjpdev01.sharepoint.com/sites/Teams-EOC-Site-01",
+      "contentUrl": "https://<<appDomain>>/index.html#/tab",
+      "websiteUrl": "https://<<websiteUrl>>",
       "scopes": [
         "personal"
       ]
@@ -51,10 +51,10 @@
     "messageTeamMembers"
   ],
   "validDomains": [
-    "jpdeveoc01.azurewebsites.net"
+    "<<appDomain>>"
   ],
   "webApplicationInfo": {
-    "id": "8f3db3f7-828f-42bc-968b-3414cc988ca1",
-    "resource": "api://jpdeveoc01.azurewebsites.net/8f3db3f7-828f-42bc-968b-3414cc988ca1"
+    "id": "<<clientId>>",
+    "resource": "api://<<appDomain>>/<<clientId>>"
   }
 }
