@@ -1,7 +1,7 @@
 ## Overview
 
 1. The current version of the Microsoft Teams Emergency Operations Center operates as an app in Microsoft Teams that is installed locally in your tenant by your tenant administrator or any user who has the capability to side load the application.
-1. Once installed, it can be accessed via "+Add a tab" option at the top of the channel within a team. **Channel > Add a tab > TEOC**
+1. Once installed, it can be accessed as a personal app from the "Apps" section in Teams.
 1. The app will enable users to create new incidents, modify existing incidents and view the incidents on a dashboard.
 1. The app will create a team for each incident with default channel so that users track the activities for each incident in specific structured Teams channels.
 1. There are 5 major components in the Microsoft Teams Emergency Operations Center App -
@@ -52,17 +52,18 @@
 ### Enable Map Viewer
 Admins can follow the steps below to enable "Map Viewer" for Incidents in the dashboard.
 
-1. Generate a Bing Map Key from https://www.bingmapsportal.com/
+1. Create an Azure Maps account as per instructions from the [link.](https://learn.microsoft.com/en-us/azure/azure-maps/quick-demo-map-app#create-an-azure-maps-account)
+
+1. Get the subscription key for your account as per instructions from the [link.](https://learn.microsoft.com/en-us/azure/azure-maps/quick-demo-map-app#get-the-subscription-key-for-your-account)
 
 1. Navigate to Admin Settings -> Config Settings
 
-1. Toggle the "Enable Map Viewer" and provide the Bing Maps Key and click "Save".
+1. Toggle the "Enable Map Viewer" and provide the Azure Maps Subscription Key and click "Save".
  ![TEOC Enable Map Viewer](./Images/Enablemapviewer.png)
-1. Toggle the "Enable Map Viewer" and provide the Bing Maps Key and click "Save".
 
 1. To disable the map viewer turn off the toggle for "Enable Map Viewer".
 
-1. If an incorrect Bing Map key is entered "Map Viewer" is not shown in the dashboard.
+1. If an incorrect subscription key is entered "Map Viewer" will not work as expected.
 
 
 ### Dashboard Map Viewer
@@ -202,6 +203,10 @@ If there are any changes to the Roles, _View_ link will be available on the Role
          ![TEOC Admin Settings](./Images/AppTitle.png) 
 
       1. Enable Map Viewer: Refer to the [Enable Map Viewer](#enable-map-viewer) section. 
+
+      1. Role with Edit Access: The admins can select a role from the dropdown list. The users assigned to this role while creating an incident will have the ability to edit that incident. 
+
+         ![TEOC Admin Settings](./Images/EditAccessRole.png) 
 
 
 ## Notify to Teams Extension

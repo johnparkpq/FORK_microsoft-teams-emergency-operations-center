@@ -1,6 +1,6 @@
 import { MessageBar } from "@fluentui/react";
 import { Input, Spinner } from "@fluentui/react-components";
-import { Button } from "@fluentui/react-northstar";
+import { Button, FormDropdown } from "@fluentui/react-northstar";
 import { Icon } from "@fluentui/react/lib/Icon";
 import { Label } from "@fluentui/react/lib/Label";
 import { Toggle } from "@fluentui/react/lib/Toggle";
@@ -30,9 +30,11 @@ export interface IConfigSettingsProps {
     appInsights: ApplicationInsights;
     userPrincipalName: any;
     isMapViewerEnabled: boolean;
-    bingMapsKeyConfigData: any;
+    azureMapsKeyConfigData: any;
     appTitle: string;
     appTitleData: any;
+    editIncidentAccessRole: string;
+    editIncidentAccessRoleData: any;
 };
 export interface IConfigSettingsState {
     enableRoles: boolean;
@@ -40,10 +42,12 @@ export interface IConfigSettingsState {
     showAssignRolesLink: boolean;
     showLoader: boolean;
     enableMapViewer: boolean;
-    bingMapsKey: string;
-    bingMapsKeyError: boolean;
+    azureMapsKey: string;
+    azureMapsKeyError: boolean;
     appTitle: string;
     appTitleKeyError: boolean;
+    roleDropdownOptions: any;
+    selectedRole: string;
 }
 export interface IMessages {
     roles: IMessageData;
@@ -71,14 +75,21 @@ export default class ConfigSettings extends React.Component<IConfigSettingsProps
             showAssignRolesLink: this.props.isRolesEnabled,
             showLoader: false,
             enableMapViewer: this.props.isMapViewerEnabled,
-            bingMapsKey: this.props.bingMapsKeyConfigData?.value?.trim()?.length > 0 ? this.props.bingMapsKeyConfigData?.value : "",
-            bingMapsKeyError: false,
+            azureMapsKey: this.props.azureMapsKeyConfigData?.value?.trim()?.length > 0 ? this.props.azureMapsKeyConfigData?.value : "",
+            azureMapsKeyError: false,
             appTitle: this.props.appTitle,
-            appTitleKeyError: false
+            appTitleKeyError: false,
+            roleDropdownOptions: '',
+            selectedRole: this.props.editIncidentAccessRole
         }
 
         //bind methods
         this.updateSettings = this.updateSettings.bind(this);
+    }
+
+    //get roles for dropdown list on load
+    public async componentDidMount() {
+        await this.getRoleDropdownOptions();
     }
 
     //Create object for Common Services class
@@ -88,6 +99,9 @@ export default class ConfigSettings extends React.Component<IConfigSettingsProps
     private updateSettings = async () => {
         try {
             let noChanges: boolean = true;
+            // create graph endpoint for TEOC Config list
+            const configListNewGraphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}${graphConfig.listsGraphEndpoint}/${siteConfig.configurationList}/items`;
+
             //Reset Generic Message
             this.setState((prevState) => ({
                 messages: {
@@ -103,13 +117,13 @@ export default class ConfigSettings extends React.Component<IConfigSettingsProps
                     noChanges = false;
                     this.setState({ showLoader: true });
 
+                    //If AppTitle key is missing in config list add new item to the list
                     if (this.props.appTitleData.itemId === undefined) {
-                        // create graph endpoint for TEOC Config list to add app title
-                        const graphConfigListEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.configurationList}/items`;
+                        //create graph endpoint for TEOC Config list to add app title
                         const newItemAppTitleObj = { fields: { Value: this.state.appTitle.trim(), Title: constants.appTitleKey } };
                         const item = await this.commonService.addItemInList
                             <{ fields: { id: number; Title: string; Value: string } }>(
-                                graphConfigListEndpoint,
+                                configListNewGraphEndpoint,
                                 this.props.graph, newItemAppTitleObj
                             );
                         this.props.setState({
@@ -141,6 +155,53 @@ export default class ConfigSettings extends React.Component<IConfigSettingsProps
                     }));
                 }
             }
+
+            //Add/Update EditAccessRole value in Config List
+            if (this.state.selectedRole?.trim() !== this.props.editIncidentAccessRole?.trim() ||
+                this.props.editIncidentAccessRoleData.itemId === undefined) {
+                if (this.state.selectedRole != undefined && this.state.selectedRole?.trim() != "") {
+                    noChanges = false;
+                    this.setState({ showLoader: true });
+                    //If EditAccessRole key is missing in config list add new item to the list
+                    if (this.props.editIncidentAccessRoleData.itemId === undefined) {
+                        const newEditAccessRoleObj = { fields: { Value: this.state.selectedRole.trim(), Title: constants.editIncidentAccessRoleKey } };
+                        const objListItem = await this.commonService.addItemInList
+                            <{ fields: { id: number; Title: string; Value: string } }>(
+                                configListNewGraphEndpoint,
+                                this.props.graph, newEditAccessRoleObj
+                            );
+                        this.props.setState({
+                            editIncidentAccessRoleData: {
+                                itemId: objListItem?.fields?.id,
+                                title: objListItem?.fields?.Title,
+                                value: objListItem?.fields?.Value
+                            }
+                        });
+                    }
+                    //If EditAccessRole key is already in config list update the item
+                    else {
+                        //Update Edit Access Role in TEOC-config list
+                        const graphConfigListEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.configurationList}/items/${this.props.editIncidentAccessRoleData.itemId}/fields`;
+                        const updateEditAccessRoleObj = { Value: this.state.selectedRole.trim() };
+                        await this.commonService.updateItemInList(graphConfigListEndpoint,
+                            this.props.graph, updateEditAccessRoleObj);
+                    }
+                    //Update Edit Access Role in Home Component states
+                    this.props.setState({
+                        editIncidentAccessRole: this.state.selectedRole.trim(),
+                        configRoleData: { ...this.props.configRoleData, value: this.state.selectedRole.trim() }
+                    });
+
+                    //Update Config Settings States
+                    this.setState(prevState => ({
+                        messages: {
+                            ...prevState.messages,
+                            genericMessage: { messageType: 4, message: this.props.localeStrings.settingsSavedmessage }
+                        }
+                    }));
+                }
+            }
+
             if (this.props.isRolesEnabled !== this.state.enableRoles) {
                 noChanges = false;
                 this.setState({ showLoader: true });
@@ -204,23 +265,20 @@ export default class ConfigSettings extends React.Component<IConfigSettingsProps
                 }
             }
 
-            //Add Bing Map API Key record in TEOC-config list
-            if (this.state.enableMapViewer && this.props.bingMapsKeyConfigData?.title === undefined &&
-                this.state.bingMapsKey?.trim() !== "") {
+            //Add azure Map subscription Key record in TEOC-config list
+            if (this.state.enableMapViewer && this.props.azureMapsKeyConfigData?.title === undefined &&
+                this.state.azureMapsKey?.trim() !== "") {
                 noChanges = false;
                 this.setState({ showLoader: true });
 
-                // create graph endpoint for TEOC Config list
-                const configGraphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}${graphConfig.listsGraphEndpoint}/${siteConfig.configurationList}/items`;
-                // create Bing Map API Key list item object
-                const listItem = { fields: { Title: constants.bingMapsKey, Value: this.state.bingMapsKey } };
-                const configResponse = await this.commonService.sendGraphPostRequest(configGraphEndpoint, this.props.graph, listItem);
+                const listItem = { fields: { Title: constants.azureMapsKey, Value: this.state.azureMapsKey } };
+                const configResponse = await this.commonService.sendGraphPostRequest(configListNewGraphEndpoint, this.props.graph, listItem);
                 this.props.setState({
                     isMapViewerEnabled: this.state.enableMapViewer,
-                    bingMapsKeyConfigData: {
-                        ...this.props.bingMapsKeyConfigData,
+                    azureMapsKeyConfigData: {
+                        ...this.props.azureMapsKeyConfigData,
                         title: configResponse.fields.Title,
-                        value: this.state.bingMapsKey,
+                        value: this.state.azureMapsKey,
                         itemId: configResponse.fields.id
                     }
                 });
@@ -233,38 +291,38 @@ export default class ConfigSettings extends React.Component<IConfigSettingsProps
                             message: this.props.localeStrings.mapViewerKeyEnabledMessage
                         }
                     },
-                    bingMapsKey: prevState.bingMapsKey?.trim()
+                    azureMapsKey: prevState.azureMapsKey?.trim()
                 }));
             }
-            //Update Bing Map API Key in TEOC-config list
-            else if ((this.props.bingMapsKeyConfigData?.value &&
-                this.props.bingMapsKeyConfigData?.value?.trim() !== this.state.bingMapsKey?.trim()) ||
+            //Update azure Map subscription Key in TEOC-config list
+            else if ((this.props.azureMapsKeyConfigData?.value &&
+                this.props.azureMapsKeyConfigData?.value?.trim() !== this.state.azureMapsKey?.trim()) ||
                 this.props.isMapViewerEnabled !== this.state.enableMapViewer) {
                 noChanges = false;
-                //Validate Bing Map API Key
+                //Validate azure Map subscription Key
                 if (this.state.enableMapViewer &&
-                    (this.state.bingMapsKey?.trim() === "" || this.state.bingMapsKey?.trim() === undefined)) {
+                    (this.state.azureMapsKey?.trim() === "" || this.state.azureMapsKey?.trim() === undefined)) {
                     this.setState(prevState => ({
-                        bingMapsKeyError: true,
+                        azureMapsKeyError: true,
                         messages: {
                             ...prevState.messages,
                             mapViewer: { messageType: 1, message: this.props.localeStrings.mapViewerKeyRequiredMessage }
                         }
                     }));
                 }
-                //Update Bing Map API Key
+                //Update azure Map subscription Key
                 else {
                     this.setState({ showLoader: true });
-                    //Endpoint to update Bing Map API Key in TEOC-config list
-                    const graphConfigListEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.configurationList}/items/${this.props.bingMapsKeyConfigData?.itemId}/fields`;
-                    const updatedValue = this.state.enableMapViewer ? this.state.bingMapsKey?.trim() : "";
-                    let updatedBingAPIKeyObj = { Value: updatedValue }
-                    //Update Bing Map API Key in TEOC-config list API Call
-                    await this.commonService.updateItemInList(graphConfigListEndpoint, this.props.graph, updatedBingAPIKeyObj);
+                    //Endpoint to update azure Map API Key in TEOC-config list
+                    const graphConfigListEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.configurationList}/items/${this.props.azureMapsKeyConfigData?.itemId}/fields`;
+                    const updatedValue = this.state.enableMapViewer ? this.state.azureMapsKey?.trim() : "";
+                    let updatedazureAPIKeyObj = { Value: updatedValue }
+                    //Update azure Map subscription Key in TEOC-config list API Call
+                    await this.commonService.updateItemInList(graphConfigListEndpoint, this.props.graph, updatedazureAPIKeyObj);
 
                     let messageToDisplay: string;
-                    if (this.state.enableMapViewer && this.props.bingMapsKeyConfigData?.value?.trim() !== "" &&
-                        this.state.bingMapsKey?.trim() !== "") {
+                    if (this.state.enableMapViewer && this.props.azureMapsKeyConfigData?.value?.trim() !== "" &&
+                        this.state.azureMapsKey?.trim() !== "") {
                         messageToDisplay = this.props.localeStrings.mapViewerKeyUpdatedMessage;
                     }
                     else {
@@ -274,7 +332,7 @@ export default class ConfigSettings extends React.Component<IConfigSettingsProps
                     //Update Home Component states
                     this.props.setState({
                         isMapViewerEnabled: this.state.enableMapViewer,
-                        bingMapsKeyConfigData: { ...this.props.bingMapsKeyConfigData, value: updatedValue }
+                        azureMapsKeyConfigData: { ...this.props.azureMapsKeyConfigData, value: updatedValue }
                     });
 
                     //Update Config Settings States
@@ -286,7 +344,7 @@ export default class ConfigSettings extends React.Component<IConfigSettingsProps
                                 message: messageToDisplay
                             }
                         },
-                        bingMapsKey: updatedValue
+                        azureMapsKey: updatedValue
                     });
                 }
             }
@@ -322,6 +380,42 @@ export default class ConfigSettings extends React.Component<IConfigSettingsProps
             this.commonService.trackException(this.props.appInsights, error,
                 constants.componentNames.ConfigSettingsComponent, 'updateSettings', this.props.userPrincipalName);
         }
+    }
+
+    //Get dropdown options for Incident Status, Incident Type and Roles dropdown
+    private getRoleDropdownOptions = async () => {
+        try {
+            const roleGraphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}${graphConfig.listsGraphEndpoint}/${siteConfig.roleAssignmentList}/items?$expand=fields&$Top=5000`;
+
+            let rolesList = await this.commonService.getDropdownOptions(roleGraphEndpoint, this.props.graph);
+            rolesList = rolesList.sort();
+
+            //Remove the Secondarycommander and 'new role' from the dropdown list
+            rolesList.splice(rolesList.indexOf(constants.secondaryIncidentCommanderRole), 1,);
+            rolesList.splice(rolesList.indexOf(constants.newRole), 1);
+            //Add 'None' to the dropdown. This is to allow users to remove any old mapping 
+            rolesList.splice(0, 0, constants.noneOption);
+
+            this.setState({
+                roleDropdownOptions: rolesList,
+                showLoader: false,
+            })
+
+        } catch (error) {
+            console.error(
+                constants.errorLogPrefix + "ConfigSettings_getRoleDropdownOptions \n",
+                JSON.stringify(error)
+            );
+            // Log Exception
+            this.commonService.trackException(this.props.appInsights, error, constants.componentNames.ConfigSettingsComponent, 'ConfigSettings_getRoleDropdownOptions', this.props.userPrincipalName);
+        }
+    }
+
+    // on change of dropdown set the state of selected role
+    private onRoleChange = (_event: any, selectedRole: any) => {
+        this.setState({
+            selectedRole: selectedRole.value
+        })
     }
 
     //Render Method
@@ -367,7 +461,7 @@ export default class ConfigSettings extends React.Component<IConfigSettingsProps
                             </Label>
                         </div>
                         <div className='app-title-input-wrapper'>
-                            <Input
+                            <Input                               
                                 placeholder={this.props.localeStrings.AppTitlePlaceholderText}
                                 className="app-title-input-box"
                                 value={this.state.appTitle}
@@ -435,7 +529,7 @@ export default class ConfigSettings extends React.Component<IConfigSettingsProps
                             </a>
                         }
                     </div>
-                    <div className={`config-settings-toggle-btn-wrapper map-viewer-setting${this.state.bingMapsKeyError ? " field-with-error" : ""}`}>
+                    <div className={`config-settings-toggle-btn-wrapper map-viewer-setting${this.state.azureMapsKeyError ? " field-with-error" : ""}`}>
                         <Toggle
                             checked={this.state.enableMapViewer}
                             label={
@@ -467,13 +561,14 @@ export default class ConfigSettings extends React.Component<IConfigSettingsProps
                         {this.state.enableMapViewer &&
                             <div className='api-key-input-wrapper'>
                                 <Input
+                                    type="password"
                                     placeholder={this.props.localeStrings.mapViewerPlaceholder}
                                     className="api-key-input-box"
-                                    value={this.state.bingMapsKey}
+                                    value={this.state.azureMapsKey}
                                     onChange={(_ev, data: any) => {
                                         this.setState((prevState) => ({
-                                            bingMapsKey: data.value,
-                                            bingMapsKeyError: data?.value?.trim() === "",
+                                            azureMapsKey: data.value,
+                                            azureMapsKeyError: data?.value?.trim() === "",
                                             messages: {
                                                 ...prevState.messages,
                                                 mapViewer: { messageType: -1, message: "" }
@@ -481,12 +576,46 @@ export default class ConfigSettings extends React.Component<IConfigSettingsProps
                                         }))
                                     }}
                                 />
-                                {this.state.bingMapsKeyError &&
+                                {this.state.azureMapsKeyError &&
                                     <span className='api-key-error-msg' aria-live="polite" role="alert">
                                         {this.props.localeStrings.mapViewerKeyRequiredMessage}</span>
                                 }
                             </div>
                         }
+                    </div>
+
+                    <div className={`config-settings-app-edit-role-wrapper`}>
+                        <div className="role-title-label">
+                            <Label>
+                                {this.props.localeStrings.editAccessRoleLabel}
+                                <span className='info-icon'>
+                                    <TooltipHost
+                                        content={<span dangerouslySetInnerHTML={{ __html: this.props.localeStrings.editAccessRoleInfoIconText }} />}
+                                        calloutProps={{ gapSpace: 0 }}
+                                        id="role-title-tooltip"
+                                    >
+                                        <Icon iconName='info' tabIndex={0} aria-label="Info"
+                                            aria-describedby="role-title-tooltip"
+                                            role="button"
+                                        />
+                                    </TooltipHost>
+                                </span>
+                            </Label>
+                        </div>
+                        <div className='app-role-input-wrapper'>
+                            <FormDropdown
+                                aria-label={this.props.localeStrings.fieldAdditionalRoles + constants.requiredAriaLabel}
+                                placeholder={this.props.localeStrings.phRoles}
+                                items={this.state.roleDropdownOptions ? this.state.roleDropdownOptions : []}
+                                fluid={true}
+                                autoSize
+                                onChange={this.onRoleChange}
+                                value={this.state.selectedRole}
+                                id="addRole-dropdown"
+                                aria-labelledby="addRole-dropdown"
+                                className="select-role-with-edit-dropdown"
+                            />
+                        </div>
                     </div>
                 </div>
                 {this.state.showLoader &&
