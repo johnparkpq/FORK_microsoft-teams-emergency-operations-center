@@ -78,9 +78,11 @@ interface IEOCHomeState {
     fromActiveDashboardTab: boolean;
     appSettings: any;
     isMapViewerEnabled: boolean;
-    bingMapsKeyConfigData: any;
+    azureMapsKeyConfigData: any;
     appTitle: string;
     appTitleData: any;
+    editIncidentAccessRole: string;
+    editIncidentAccessRoleData: any;
 }
 
 interface IEOCHomeProps {
@@ -149,9 +151,11 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
             fromActiveDashboardTab: false,
             appSettings: {},
             isMapViewerEnabled: false,
-            bingMapsKeyConfigData: {},
+            azureMapsKeyConfigData: {},
             appTitle: siteConfig.appTitle,
-            appTitleData: {},
+            appTitleData: {},         
+            editIncidentAccessRole: "",
+            editIncidentAccessRoleData: {}   
         }
 
         this.showActiveBridge = this.showActiveBridge.bind(this);
@@ -239,7 +243,7 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
         }
     }
     //create MS Graph client
-    createMicrosoftGraphClient(credential: TeamsUserCredential,scopes: string[]) {
+    createMicrosoftGraphClient(credential: TeamsUserCredential, scopes: string[]) {
         const authProvider = new TeamsFxProvider(credential, scopes);
         const graphClient = Client.initWithMiddleware({
             authProvider: authProvider,
@@ -416,23 +420,32 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
 
             //graph endpoint to get data from TEOC-Config list
             let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.state.siteId}/lists/${siteConfig.configurationList}/items?$expand=fields&$Top=5000`;
-            const configDataRecords = [constants.enableRoles, constants.bingMapsKey, constants.appTitleKey];
+            const configDataRecords = [constants.enableRoles, constants.azureMapsKey, constants.appTitleKey,  constants.editIncidentAccessRoleKey];
             const configData = await this.dataService.getConfigData(graphEndpoint, this.state.graph, configDataRecords);
             await this.checkUserRoleIsAdmin();
             const appTitleItem = configData.filter((item: any) => item.title === constants.appTitleKey);
-            const bingMapItem = configData.filter((item: any) => item.title === constants.bingMapsKey);
+            const azureMapItem = configData.filter((item: any) => item.title === constants.azureMapsKey);
+            const editIncidentAccessRole = configData.filter((item: any) => item.title === constants.editIncidentAccessRoleKey);
+            
             if (appTitleItem.length > 0) {
                 this.setState({
                     appTitle: appTitleItem[0].value,
                     appTitleData: appTitleItem[0]
                 });
             }
-            if (bingMapItem.length > 0) {
+            if (azureMapItem.length > 0) {
                 this.setState({
-                    isMapViewerEnabled: bingMapItem[0].value?.trim() !== "" && bingMapItem[0].value?.trim() !== undefined,
-                    bingMapsKeyConfigData: bingMapItem[0]
+                    isMapViewerEnabled: azureMapItem[0].value?.trim() !== "" && azureMapItem[0].value?.trim() !== undefined,
+                    azureMapsKeyConfigData: azureMapItem[0]
                 });
             }
+            if (editIncidentAccessRole.length > 0) {
+                this.setState({
+                    editIncidentAccessRole: editIncidentAccessRole[0].value,
+                    editIncidentAccessRoleData: editIncidentAccessRole[0]
+                });
+            }
+
             this.setState({
                 isRolesEnabled: configData[0].value === "True",
                 configRoleData: configData[0],
@@ -735,7 +748,7 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
                             localeStrings={localeStrings}
                             currentUserName={this.state.currentUserName}
                             currentThemeName={this.state.currentThemeName}
-                            appTitle={this.state.appTitle}
+                            appTitle={this.state.appTitle}                           
                         />
 
                         {this.state.showLoginPage &&
@@ -801,7 +814,9 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
                                             siteName={siteName}
                                             currentThemeName={this.state.currentThemeName}
                                             isMapViewerEnabled={this.state.isMapViewerEnabled}
-                                            bingMapsKeyConfigData={this.state.bingMapsKeyConfigData}
+                                            azureMapsKeyConfigData={this.state.azureMapsKeyConfigData}
+                                            editIncidentAccessRole={this.state.editIncidentAccessRole}
+                                            editIncidentAccessRoleData={this.state.editIncidentAccessRoleData}
                                         />
                                         : this.state.showIncidentHistory ?
                                             <IncidentHistory
@@ -835,6 +850,7 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
                                                             graphContextURL={this.state.graphContextURL}
                                                             tenantID={this.state.tenantID}
                                                             fromActiveDashboardTab={this.state.fromActiveDashboardTab}
+                                                            currentThemeName={this.state.currentThemeName}
                                                         />
                                                         :
                                                         <Dialog
@@ -871,7 +887,8 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
                                                             activeDashboardIncidentId={this.state.activeDashboardIncidentId}
                                                             fromActiveDashboardTab={this.state.fromActiveDashboardTab}
                                                             isMapViewerEnabled={this.state.isMapViewerEnabled}
-                                                            bingMapsKeyConfigData={this.state.bingMapsKeyConfigData}
+                                                            azureMapsKeyConfigData={this.state.azureMapsKeyConfigData}
+                                                            graphBaseUrl={graphBaseURL}
                                                         />
                                                         :
                                                         <>
@@ -896,6 +913,7 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
                                                                             tenantID={this.state.tenantID}
                                                                             currentThemeName={this.state.currentThemeName}
                                                                             appSettings={this.state.appSettings}
+                                                                            editIncidentAccessRole={this.state.editIncidentAccessRole}
                                                                         />
                                                                         :
                                                                         <Dialog
@@ -926,6 +944,7 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
                                                                     tenantID={this.state.tenantID}
                                                                     currentThemeName={this.state.currentThemeName}
                                                                     appSettings={this.state.appSettings}
+                                                                    editIncidentAccessRole={this.state.editIncidentAccessRole}
                                                                 />
                                                             }
                                                         </>
