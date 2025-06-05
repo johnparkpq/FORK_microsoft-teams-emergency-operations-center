@@ -15,11 +15,11 @@
     "outline": "resources/outline.png"
   },
   "name": {
-    "short": "TEOC-PoC",
-    "full": "Microsoft Teams Emergency Operations Center - PoC"
+    "short": "TEOC-Dev",
+    "full": "Microsoft Teams Emergency Operations Center - Dev"
   },
   "description": {
-    "short": "Microsoft Teams Emergency Operations Center - Proof of Concept",
+    "short": "Microsoft Teams Emergency Operations Center - Dev",
     "full": "The Microsoft Teams Emergency Operations Center (TEOC) solution template leverages the power of the Microsoft 365 platform to centralize incident response, information sharing and field communications using powerful services like Microsoft Lists, SharePoint and more. An open-source solution supported by Microsoft it provides core functionality out of the box or can be extended to meet specific agency requirements."
   },
   "accentColor": "#FFFFFF",
@@ -27,7 +27,7 @@
   "composeExtensions": [],
   "configurableTabs": [
     {
-      "configurationUrl": "https://plqteamseocpocaue001.azurewebsites.net/index.html#/config",
+      "configurationUrl": "https://plq-teamseoc-dev-001.azurewebsites.net/index.html#/config",
       "canUpdateConfiguration": true,
       "scopes": [
         "team",
@@ -39,8 +39,8 @@
     {
       "entityId": "index",
       "name": "Teams EOC",
-      "contentUrl": "https://plqteamseocpocaue001.azurewebsites.net/index.html#/tab",
-      "websiteUrl": "https://powerlinkcomau.sharepoint.com/sites/Teams-EOC-PoC-Site",
+      "contentUrl": "https://plq-teamseoc-dev-001.azurewebsites.net/index.html#/tab",
+      "websiteUrl": "https://powerlinkcomau.sharepoint.com/sites/Teams-EOC-Dev-Site",
       "scopes": [
         "personal"
       ]
@@ -51,10 +51,10 @@
     "messageTeamMembers"
   ],
   "validDomains": [
-    "plqteamseocpocaue001.azurewebsites.net"
+    "plq-teamseoc-dev-001.azurewebsites.net"
   ],
   "webApplicationInfo": {
-    "id": "ca8a29ab-3f7d-4cb3-8604-6580d7f6b221",
-    "resource": "api://plqteamseocpocaue001.azurewebsites.net/ca8a29ab-3f7d-4cb3-8604-6580d7f6b221"
+    "id": "eddc6f71-9af1-4ee9-876f-7cb41c956b4a",
+    "resource": "api://plq-teamseoc-dev-001.azurewebsites.net/eddc6f71-9af1-4ee9-876f-7cb41c956b4a"
   }
 }
